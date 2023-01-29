@@ -31,7 +31,7 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       const user = await this.db.users.findOne({ key: 'id', equals: request.params.id })
 
       if (user === null) {
-        reply.code(400)
+        reply.code(404)
         throw new Error('User not found')
       }
 
@@ -75,7 +75,7 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       const user = await this.db.users.findOne({key: 'id', equals: request.params.id})
 
       if (!user) {
-        reply.code(400)
+        reply.code(404)
         throw new Error('User not found')
       }
 
@@ -97,7 +97,7 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       const user = await this.db.users.findOne({key: 'id', equals: request.params.id})
 
       if (!user) {
-        reply.code(400)
+        reply.code(404)
         throw new Error('User not found')
       }
 

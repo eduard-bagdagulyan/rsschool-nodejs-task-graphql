@@ -23,7 +23,7 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       const profile = await this.db.profiles.findOne({key: 'id', equals: request.params.id})
 
       if (!profile) {
-        reply.code(400)
+        reply.code(404)
         throw new Error('Profile not found')
       }
 
