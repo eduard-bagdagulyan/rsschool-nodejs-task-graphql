@@ -10,7 +10,9 @@ import type { UserEntity } from '../../utils/DB/entities/DBUsers';
 const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
   fastify
 ): Promise<void> => {
-  fastify.get('/', async function (request, reply): Promise<UserEntity[]> {});
+  fastify.get('/', async function (request, reply): Promise<UserEntity[]> {
+    return this.db.users.findMany()
+  });
 
   fastify.get(
     '/:id',
@@ -19,7 +21,22 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         params: idParamSchema,
       },
     },
-    async function (request, reply): Promise<UserEntity> {}
+    async function (request, reply): Promise<UserEntity> {
+      // const id = +request.params.id
+      //
+      // if (!isNaN(id)) {
+      //   reply.code(400).send('Wrong params supplied')
+      // } // TODO check
+
+      const user = await this.db.users.findOne({ key: 'id', equals: request.params.id })
+
+      if (user === null) {
+        reply.code(400)
+        throw new Error('User not found')
+      }
+
+      return user
+    }
   );
 
   fastify.post(
@@ -29,7 +46,9 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         body: createUserBodySchema,
       },
     },
-    async function (request, reply): Promise<UserEntity> {}
+    async function (request, reply): Promise<UserEntity> {
+      return this.db.users.create(request.body)
+    }
   );
 
   fastify.delete(
@@ -39,7 +58,9 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         params: idParamSchema,
       },
     },
-    async function (request, reply): Promise<UserEntity> {}
+    async function (request, reply): Promise<UserEntity> {
+      return this.db.users.delete(request.params.id)
+    }
   );
 
   fastify.post(
@@ -50,7 +71,18 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         params: idParamSchema,
       },
     },
-    async function (request, reply): Promise<UserEntity> {}
+    async function (request, reply): Promise<UserEntity> {
+      const user = await this.db.users.findOne({key: 'id', equals: request.params.id})
+
+      if (!user) {
+        reply.code(400)
+        throw new Error('User not found')
+      }
+
+      user.subscribedToUserIds = Array.from(new Set([...user.subscribedToUserIds, request.body.userId]))
+
+      return this.db.users.change(user.id, user)
+    }
   );
 
   fastify.post(
@@ -61,7 +93,18 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         params: idParamSchema,
       },
     },
-    async function (request, reply): Promise<UserEntity> {}
+    async function (request, reply): Promise<UserEntity> {
+      const user = await this.db.users.findOne({key: 'id', equals: request.params.id})
+
+      if (!user) {
+        reply.code(400)
+        throw new Error('User not found')
+      }
+
+      user.subscribedToUserIds = user.subscribedToUserIds.filter(value => value !== request.body.userId)
+
+      return this.db.users.change(user.id, user)
+    }
   );
 
   fastify.patch(
@@ -72,7 +115,9 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         params: idParamSchema,
       },
     },
-    async function (request, reply): Promise<UserEntity> {}
+    async function (request, reply): Promise<UserEntity> {
+      return this.db.users.change(request.params.id, request.body)
+    }
   );
 };
 
