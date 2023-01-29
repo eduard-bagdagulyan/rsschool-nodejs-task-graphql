@@ -22,15 +22,9 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       },
     },
     async function (request, reply): Promise<UserEntity> {
-      // const id = +request.params.id
-      //
-      // if (!isNaN(id)) {
-      //   reply.code(400).send('Wrong params supplied')
-      // } // TODO check
-
       const user = await this.db.users.findOne({ key: 'id', equals: request.params.id })
 
-      if (user === null) {
+      if (!user) {
         reply.code(404)
         throw new Error('User not found')
       }
