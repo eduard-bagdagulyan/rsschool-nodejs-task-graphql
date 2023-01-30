@@ -6,6 +6,7 @@ import {
   subscribeBodySchema,
 } from './schemas';
 import type { UserEntity } from '../../utils/DB/entities/DBUsers';
+import { isValidUUID } from '../../utils/misc';
 
 const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
   fastify
@@ -53,7 +54,44 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       },
     },
     async function (request, reply): Promise<UserEntity> {
-      return this.db.users.delete(request.params.id)
+      const userId = request.params.id
+
+      if (!isValidUUID(userId)) {
+        reply.code(400)
+        throw new Error('Bad Request')
+      }
+
+      const user = await this.db.users.findOne({ key: 'id', equals: userId })
+      if (!user) {
+        reply.code(404)
+        throw new Error('User not found')
+      }
+
+      const subscribedUsers = await this.db.users.findMany({ key: 'subscribedToUserIds', inArray: userId })
+      for (const user of subscribedUsers) {
+        const userWithRemovedSubscriber = {
+          ...user,
+          subscribedToUserIds: user.subscribedToUserIds.filter(value => value !== userId)
+        }
+        await this.db.users.change(user.id, userWithRemovedSubscriber)
+      }
+
+      const userProfiles = await this.db.profiles.findMany({ key: 'userId', equals: userId })
+      if (userProfiles && userProfiles.length > 0) {
+        for (const userProfile of userProfiles) {
+          await this.db.profiles.delete(userProfile.id)
+        }
+      }
+
+      const userPosts = await this.db.posts.findMany({ key: 'userId', equals: userId })
+      if (userPosts && userPosts.length > 0) {
+        for (const userPost of userPosts) {
+          await this.db.posts.delete(userPost.id)
+        }
+      }
+
+      await this.db.users.delete(userId)
+      return user
     }
   );
 
@@ -66,16 +104,17 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       },
     },
     async function (request, reply): Promise<UserEntity> {
-      const user = await this.db.users.findOne({key: 'id', equals: request.params.id})
+      const subscribeUser = await this.db.users.findOne({ key: 'id', equals: request.params.id })
+      const targetUser = await this.db.users.findOne({ key: 'id', equals: request.body.userId })
 
-      if (!user) {
+      if (!subscribeUser || !targetUser) {
         reply.code(404)
         throw new Error('User not found')
       }
 
-      user.subscribedToUserIds = Array.from(new Set([...user.subscribedToUserIds, request.body.userId]))
+      targetUser.subscribedToUserIds = Array.from(new Set([...targetUser.subscribedToUserIds, request.params.id]))
 
-      return this.db.users.change(user.id, user)
+      return this.db.users.change(targetUser.id, targetUser)
     }
   );
 
@@ -88,16 +127,22 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       },
     },
     async function (request, reply): Promise<UserEntity> {
-      const user = await this.db.users.findOne({key: 'id', equals: request.params.id})
+      const unsubscribeUser = await this.db.users.findOne({key: 'id', equals: request.params.id})
+      const targetUser = await this.db.users.findOne({ key: 'id', equals: request.body.userId })
 
-      if (!user) {
+      if (!unsubscribeUser || !targetUser) {
         reply.code(404)
         throw new Error('User not found')
       }
 
-      user.subscribedToUserIds = user.subscribedToUserIds.filter(value => value !== request.body.userId)
+      if (!targetUser.subscribedToUserIds.includes(unsubscribeUser.id)) {
+        reply.code(400)
+        throw new Error('User is not subscribed')
+      }
 
-      return this.db.users.change(user.id, user)
+      targetUser.subscribedToUserIds = targetUser.subscribedToUserIds.filter(value => value !== unsubscribeUser.id)
+
+      return this.db.users.change(targetUser.id, targetUser)
     }
   );
 
@@ -110,7 +155,14 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       },
     },
     async function (request, reply): Promise<UserEntity> {
-      return this.db.users.change(request.params.id, request.body)
+      const userId = request.params.id
+
+      if (!isValidUUID(userId)) {
+        reply.code(400)
+        throw new Error('User not found')
+      }
+
+      return this.db.users.change(userId, request.body)
     }
   );
 };
