@@ -6,7 +6,9 @@ import type { PostEntity } from '../../utils/DB/entities/DBPosts';
 const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
   fastify
 ): Promise<void> => {
-  fastify.get('/', async function (request, reply): Promise<PostEntity[]> {});
+  fastify.get('/', async function (request, reply): Promise<PostEntity[]> {
+    return this.db.posts.findMany()
+  });
 
   fastify.get(
     '/:id',
@@ -15,7 +17,16 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         params: idParamSchema,
       },
     },
-    async function (request, reply): Promise<PostEntity> {}
+    async function (request, reply): Promise<PostEntity> {
+      const post = await this.db.posts.findOne({ key: 'id', equals: request.params.id })
+
+      if (!post) {
+        reply.code(404)
+        throw new Error('Post was not found')
+      }
+
+      return post
+    }
   );
 
   fastify.post(
@@ -25,7 +36,9 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         body: createPostBodySchema,
       },
     },
-    async function (request, reply): Promise<PostEntity> {}
+    async function (request, reply): Promise<PostEntity> {
+      return this.db.posts.create(request.body)
+    }
   );
 
   fastify.delete(
@@ -35,7 +48,16 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         params: idParamSchema,
       },
     },
-    async function (request, reply): Promise<PostEntity> {}
+    async function (request, reply): Promise<PostEntity> {
+      const post = await this.db.posts.findOne({ key: 'id', equals: request.params.id })
+
+      if (!post) {
+        reply.code(400)
+        throw new Error('Post was not found')
+      }
+
+      return this.db.posts.delete(request.params.id)
+    }
   );
 
   fastify.patch(
@@ -46,7 +68,16 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
         params: idParamSchema,
       },
     },
-    async function (request, reply): Promise<PostEntity> {}
+    async function (request, reply): Promise<PostEntity> {
+      const post = await this.db.posts.findOne({ key: 'id', equals: request.params.id })
+
+      if (!post) {
+        reply.code(400)
+        throw new Error('Post was not found')
+      }
+
+      return this.db.posts.change(request.params.id, request.body)
+    }
   );
 };
 
