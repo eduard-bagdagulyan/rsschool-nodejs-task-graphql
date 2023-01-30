@@ -22,7 +22,7 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 
       if (!post) {
         reply.code(404)
-        throw new Error('Post not found')
+        throw new Error('Post was not found')
       }
 
       return post
@@ -49,6 +49,13 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       },
     },
     async function (request, reply): Promise<PostEntity> {
+      const post = await this.db.posts.findOne({ key: 'id', equals: request.params.id })
+
+      if (!post) {
+        reply.code(400)
+        throw new Error('Post was not found')
+      }
+
       return this.db.posts.delete(request.params.id)
     }
   );
@@ -62,6 +69,13 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       },
     },
     async function (request, reply): Promise<PostEntity> {
+      const post = await this.db.posts.findOne({ key: 'id', equals: request.params.id })
+
+      if (!post) {
+        reply.code(400)
+        throw new Error('Post was not found')
+      }
+
       return this.db.posts.change(request.params.id, request.body)
     }
   );
