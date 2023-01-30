@@ -24,7 +24,7 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
 
       if (!memberType) {
         reply.code(404)
-        throw new Error('Member type not found')
+        throw new Error('Member type was not found')
       }
 
       return memberType
@@ -40,6 +40,13 @@ const plugin: FastifyPluginAsyncJsonSchemaToTs = async (
       },
     },
     async function (request, reply): Promise<MemberTypeEntity> {
+      const memberType = await this.db.memberTypes.findOne({ key: 'id', equals: request.params.id })
+
+      if (!memberType) {
+        reply.code(400)
+        throw new Error('Member type was not found')
+      }
+
       return this.db.memberTypes.change(request.params.id, request.body)
     }
   );
